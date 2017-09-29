@@ -1,0 +1,25 @@
+[package]
+name = "mrn-canvas"
+version = "0.1.0"
+authors = ["Sven Thiele <sthiele78@gmail.com>"]
+
+[dependencies]
+relm = "^0.10.0"
+relm-derive = "^0.10.0"
+gio = "*"
+cairo-rs = "^0"
+gdk = "*"
+gdk-pixbuf = "*"
+pango = "*"
+
+[dependencies.gtk]
+version = "^0.2.0"
+features = ["v3_22"]
+
+[lib]
+name = "mrn_canvas"
+path = "src/lib.rs"
+
+[[example]]
+name = "test"
+path = "src/examples/test.rs"
