@@ -11,11 +11,9 @@ use gtk::Orientation::{Horizontal, Vertical};
 use relm::{Component, ContainerWidget, Relm, Update, Widget};
 
 use mrn_canvas::MRNWidget;
-
 use mrn_canvas::MRNWidgetMsg;
 
 use self::Msg::*;
-
 
 
 #[derive(Msg)]
@@ -61,28 +59,18 @@ impl Widget for Win {
 
     fn view(relm: &Relm<Self>, _model: ()) -> Win {
         let window = Window::new(WindowType::Toplevel);
-
-
         let vbox = gtk::Box::new(Vertical, 0);
-
         let hbox = gtk::Box::new(Horizontal, 0);
         let plus_button = Button::new_with_label("add");
         hbox.add(&plus_button);
-
         let minus_button = Button::new_with_label("del");
         hbox.add(&minus_button);
 
-
-        //         let hbox = gtk::Box::new(Horizontal, 0);
-
-        vbox.add(&hbox);
         let mrn = ();
-
         let mrnwidget = vbox.add_widget::<MRNWidget, _>(relm, mrn);
 
-
+        vbox.add(&hbox);
         window.add(&vbox);
-
         window.show_all();
 
 
