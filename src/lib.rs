@@ -4,11 +4,11 @@ extern crate relm;
 #[macro_use]
 extern crate relm_derive;
 
-extern crate gdk;
 extern crate cairo;
+extern crate gdk;
 
-use gtk::{ContainerExt, DrawingArea, Inhibit, WidgetExt, WidgetExtManual,
-          ScrolledWindow, ScrolledWindowExt, Viewport};
+use gtk::{ContainerExt, DrawingArea, Inhibit, ScrolledWindow, ScrolledWindowExt, Viewport,
+          WidgetExt, WidgetExtManual};
 use relm::{Relm, Update, Widget};
 
 use gdk::WindowExt;
@@ -77,8 +77,8 @@ impl Update for MRNWidget {
                 self.start_x = Some(x);
                 self.start_y = Some(y);
                 self.selected = self.model.item_list.iter().rposition(|ref item| {
-                    (x >= item.coord_x) & (x <= item.coord_x + item.width) & (y >= item.coord_y) &
-                        (y <= item.coord_y + item.height)
+                    (x >= item.coord_x) & (x <= item.coord_x + item.width) & (y >= item.coord_y)
+                        & (y <= item.coord_y + item.height)
                 });
 
                 if self.selected.is_some() {
@@ -135,7 +135,6 @@ impl Widget for MRNWidget {
     }
 
     fn view(relm: &Relm<Self>, model: Self::Model) -> Self {
-
         let sw = ScrolledWindow::new(None, None);
         sw.set_size_request(500, 500);
         sw.set_min_content_height(500);
@@ -178,7 +177,6 @@ impl Widget for MRNWidget {
         vp.add(&da);
         sw.add(&vp);
 
-
         connect!(
             relm,
             da,
@@ -215,7 +213,6 @@ impl Widget for MRNWidget {
             return (DrawSW, Inhibit(false))
         );
 
-
         MRNWidget {
             da: da,
             sw: sw,
@@ -248,7 +245,6 @@ impl MRNWidget {
     }
 
     pub fn add_new_item(&mut self) {
-
         println!("widget add item");
 
         let muff = self.vp.translate_coordinates(&self.da, 1, 1);

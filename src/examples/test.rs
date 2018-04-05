@@ -1,9 +1,9 @@
 extern crate gtk;
+extern crate mrn_canvas;
 #[macro_use]
 extern crate relm;
 #[macro_use]
 extern crate relm_derive;
-extern crate mrn_canvas;
 
 use gtk::{Button, ButtonExt, ContainerExt, Inhibit, WidgetExt, Window, WindowType};
 use gtk::Orientation::{Horizontal, Vertical};
@@ -11,7 +11,6 @@ use relm::{Component, ContainerWidget, Relm, Update, Widget};
 use mrn_canvas::MRNWidget;
 use mrn_canvas::MRNWidgetMsg;
 use self::Msg::*;
-
 
 #[derive(Msg)]
 enum Msg {
@@ -70,10 +69,14 @@ impl Widget for Win {
         window.add(&vbox);
         window.show_all();
 
-
         connect!(relm, plus_button, connect_clicked(_), Add);
         connect!(relm, minus_button, connect_clicked(_), Del);
-        connect!(relm, window, connect_delete_event(_, _), return (Some(Quit), Inhibit(false)));
+        connect!(
+            relm,
+            window,
+            connect_delete_event(_, _),
+            return (Some(Quit), Inhibit(false))
+        );
 
         Win {
             _mrnwidget: mrnwidget,
