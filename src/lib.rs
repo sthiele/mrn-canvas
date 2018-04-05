@@ -1,26 +1,20 @@
+extern crate cairo;
+extern crate gdk;
 extern crate gtk;
 #[macro_use]
 extern crate relm;
 #[macro_use]
 extern crate relm_derive;
 
-extern crate cairo;
-extern crate gdk;
-
 use gtk::{ContainerExt, DrawingArea, Inhibit, ScrolledWindow, ScrolledWindowExt, Viewport,
           WidgetExt, WidgetExtManual};
+use gtk::DestDefaults;
+use gtk::TargetList;
 use relm::{Relm, Update, Widget};
-
 use gdk::WindowExt;
 use gdk::DrawingContextExt;
 use gdk::DragAction;
-
 use gdk::Atom;
-
-use gtk::DestDefaults;
-use gtk::TargetList;
-
-use std::iter::Iterator;
 
 use self::MRNWidgetMsg::*;
 
@@ -119,7 +113,6 @@ impl Update for MRNWidget {
             DrawWidget => {
                 self.draw_item_list();
             }
-
             DrawSW => {
                 self.draw_item_list();
             }
