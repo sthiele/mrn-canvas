@@ -3,16 +3,13 @@ extern crate gtk;
 extern crate relm;
 #[macro_use]
 extern crate relm_derive;
-
 extern crate mrn_canvas;
 
 use gtk::{Button, ButtonExt, ContainerExt, Inhibit, WidgetExt, Window, WindowType};
 use gtk::Orientation::{Horizontal, Vertical};
 use relm::{Component, ContainerWidget, Relm, Update, Widget};
-
 use mrn_canvas::MRNWidget;
 use mrn_canvas::MRNWidgetMsg;
-
 use self::Msg::*;
 
 

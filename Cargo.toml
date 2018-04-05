@@ -4,16 +4,13 @@ version = "0.1.0"
 authors = ["Sven Thiele <sthiele78@gmail.com>"]
 
 [dependencies]
-relm = "^0.10.0"
-relm-derive = "^0.10.0"
-gio = "*"
-cairo-rs = "^0"
-gdk = "*"
-gdk-pixbuf = "*"
-pango = "*"
+relm = "^0.11.0"
+relm-derive = "^0.11.0"
+cairo-rs = "^0.3.0"
+gdk = "^0.7.0"
 
 [dependencies.gtk]
-version = "^0.2.0"
+version = "^0.3.0"
 features = ["v3_22"]
 
 [lib]

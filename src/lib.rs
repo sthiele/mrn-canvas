@@ -7,69 +7,33 @@ extern crate relm_derive;
 extern crate gdk;
 extern crate cairo;
 
-use gtk::{Button, ButtonExt, ContainerExt, DrawingArea, Inhibit, WidgetExt, WidgetExtManual,
-          Window, ScrolledWindow, ScrolledWindowExt, Viewport, ViewportExt, WindowType};
-use gtk::Orientation::{Horizontal, Vertical};
-use relm::{Component, ContainerWidget, Relm, Update, Widget};
+use gtk::{ContainerExt, DrawingArea, Inhibit, WidgetExt, WidgetExtManual,
+          ScrolledWindow, ScrolledWindowExt, Viewport};
+use relm::{Relm, Update, Widget};
 
 use gdk::WindowExt;
 use gdk::DrawingContextExt;
-use gdk::EventButton;
 use gdk::DragAction;
-
-use gdk::DragContext;
-use gdk::DragContextExt;
 
 use gdk::Atom;
 
-use gtk::CornerType;
-use gtk::PolicyType;
 use gtk::DestDefaults;
 use gtk::TargetList;
-use gtk::TargetFlags;
-use gtk::TargetEntry;
 
 use std::iter::Iterator;
 
 use self::MRNWidgetMsg::*;
-
-// trait MItem {
-//     fn get_coord_x(&self) -> f64;
-//     fn get_coord_y(&self) -> f64;
-// //     fn get_id(&self) -> u64;
-//     fn get_height(&self) -> f64;
-//     fn get_width(&self) -> f64;
-// }
 
 pub struct Model {
     item_list: Vec<Item>,
 }
 #[derive(Clone)]
 struct Item {
-    //     label: String,
     coord_x: f64,
     coord_y: f64,
     width: f64,
     height: f64,
 }
-// impl MItem for Item {
-//     fn get_coord_x(&self) -> f64 {
-//         self.coord_x
-//     }
-//     fn get_coord_y(&self) -> f64 {
-//         self.coord_y
-//     }
-// //     fn get_id(&self) -> u64 {
-// //         self.coords
-// //     }
-//     fn get_width(&self) -> f64 {
-//         self.width
-//     }
-//     fn get_height(&self) -> f64 {
-//         self.height
-//     }
-// }
-
 #[derive(Msg)]
 pub enum MRNWidgetMsg {
     Add,
@@ -97,7 +61,7 @@ impl Update for MRNWidget {
     type ModelParam = ();
     type Msg = MRNWidgetMsg;
 
-    fn model(_: &Relm<Self>, value: ()) -> Self::Model {
+    fn model(_: &Relm<Self>, _value: ()) -> Self::Model {
         Model { item_list: vec![] }
     }
 
@@ -204,7 +168,7 @@ impl Widget for MRNWidget {
         let destdef = DestDefaults::all();
         let dragact = DragAction::all();
 
-        let mut v = vec![];
+        let v = vec![];
         let tl = TargetList::new(&v);
         let atom = Atom::intern("hi");
         tl.add(&atom, 0, 0);
@@ -218,20 +182,20 @@ impl Widget for MRNWidget {
         connect!(
             relm,
             da,
-            connect_button_press_event(s, c),
+            connect_button_press_event(_s, c),
             return (BP(c.get_position()), Inhibit(false))
         );
         connect!(
             relm,
             da,
-            connect_button_release_event(s, c),
+            connect_button_release_event(_s, c),
             return (BR(c.get_position()), Inhibit(false))
         );
 
         connect!(
             relm,
             da,
-            connect_drag_drop(s, c, x, y, t),
+            connect_drag_drop(_s, _c, x, y, _t),
             return (DD((x, y)), Inhibit(false))
         );
 
@@ -241,13 +205,13 @@ impl Widget for MRNWidget {
         connect!(
             relm,
             da,
-            connect_draw(s, c),
+            connect_draw(_s, _c),
             return (DrawWidget, Inhibit(false))
         );
         connect!(
             relm,
             sw,
-            connect_draw(s, c),
+            connect_draw(_s, _c),
             return (DrawSW, Inhibit(false))
         );
 
@@ -290,7 +254,6 @@ impl MRNWidget {
         let muff = self.vp.translate_coordinates(&self.da, 1, 1);
         let (x, y) = muff.unwrap();
         let mitem = Item {
-            //                 label : String::new("bla"),
             coord_x: x as f64,
             coord_y: y as f64,
             width: 100.0,
