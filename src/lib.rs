@@ -93,8 +93,8 @@ impl Update for MRNWidget {
                 println!("Button released");
                 if let Some(idx) = self.selected {
                     let mut sitem = self.model.item_list.remove(idx);
-                    sitem.coord_x = sitem.coord_x + (x - self.start_x.unwrap());
-                    sitem.coord_y = sitem.coord_y + (y - self.start_y.unwrap());
+                    sitem.coord_x +=x - self.start_x.unwrap();
+                    sitem.coord_y +=y - self.start_y.unwrap();
                     self.model.item_list.insert(idx, sitem);
                 }
                 self.draw_item_list();
@@ -104,8 +104,8 @@ impl Update for MRNWidget {
                 println!("Drag dropped at {},{}", x, y);
                 if let Some(idx) = self.selected {
                     let mut sitem = self.model.item_list.remove(idx);
-                    sitem.coord_x = sitem.coord_x + (x as f64 - self.start_x.unwrap());
-                    sitem.coord_y = sitem.coord_y + (y as f64 - self.start_y.unwrap());
+                    sitem.coord_x += f64::from(x) - self.start_x.unwrap();
+                    sitem.coord_y += f64::from(y) - self.start_y.unwrap();
                     self.model.item_list.insert(idx, sitem);
                 }
                 self.draw_item_list();
@@ -207,10 +207,10 @@ impl Widget for MRNWidget {
         );
 
         MRNWidget {
-            da: da,
-            sw: sw,
-            vp: vp,
-            tl: tl,
+            da,
+            sw,
+            vp,
+            tl,
             model,
             start_x: None,
             start_y: None,
@@ -227,7 +227,7 @@ impl MRNWidget {
         let c = dc.get_cairo_context().unwrap();
 
         clear_surface(&c);
-        for item in self.model.item_list.iter() {
+        for item in &self.model.item_list {
             draw_item(&c, item);
         }
         if let Some(idx) = self.selected {
@@ -243,8 +243,8 @@ impl MRNWidget {
         let muff = self.vp.translate_coordinates(&self.da, 1, 1);
         let (x, y) = muff.unwrap();
         let mitem = Item {
-            coord_x: x as f64,
-            coord_y: y as f64,
+            coord_x: f64::from(x),
+            coord_y: f64::from(y),
             width: 100.0,
             height: 100.0,
         };
