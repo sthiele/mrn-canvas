@@ -1,16 +1,12 @@
-extern crate gtk;
-extern crate mrn_canvas;
-#[macro_use]
-extern crate relm;
-#[macro_use]
-extern crate relm_derive;
-
-use gtk::{Button, ButtonExt, ContainerExt, Inhibit, WidgetExt, Window, WindowType};
+use self::Msg::*;
 use gtk::Orientation::{Horizontal, Vertical};
-use relm::{Component, ContainerWidget, Relm, Update, Widget};
+use gtk::{Button, ButtonExt, ContainerExt, Inhibit, WidgetExt, Window, WindowType};
 use mrn_canvas::MRNWidget;
 use mrn_canvas::MRNWidgetMsg;
-use self::Msg::*;
+use relm::connect;
+use relm::connect_stream;
+use relm::{Component, ContainerWidget, Relm, Update, Widget};
+use relm_derive::*;
 
 #[derive(Msg)]
 enum Msg {

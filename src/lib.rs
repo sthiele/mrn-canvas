@@ -1,20 +1,17 @@
-extern crate cairo;
-extern crate gdk;
-extern crate gtk;
-#[macro_use]
-extern crate relm;
-#[macro_use]
-extern crate relm_derive;
-
-use gtk::{ContainerExt, DrawingArea, Inhibit, ScrolledWindow, ScrolledWindowExt, Viewport,
-          WidgetExt, WidgetExtManual};
+use gdk::Atom;
+use gdk::DragAction;
+use gdk::DrawingContextExt;
+use gdk::WindowExt;
 use gtk::DestDefaults;
 use gtk::TargetList;
+use gtk::{
+    ContainerExt, DrawingArea, Inhibit, ScrolledWindow, ScrolledWindowExt, Viewport, WidgetExt,
+    WidgetExtManual,
+};
+use relm::connect;
+use relm::connect_stream;
 use relm::{Relm, Update, Widget};
-use gdk::WindowExt;
-use gdk::DrawingContextExt;
-use gdk::DragAction;
-use gdk::Atom;
+use relm_derive::*;
 
 use self::MRNWidgetMsg::*;
 
@@ -71,7 +68,9 @@ impl Update for MRNWidget {
                 self.start_x = Some(x);
                 self.start_y = Some(y);
                 self.selected = self.model.item_list.iter().rposition(|ref item| {
-                    (x >= item.coord_x) & (x <= item.coord_x + item.width) & (y >= item.coord_y)
+                    (x >= item.coord_x)
+                        & (x <= item.coord_x + item.width)
+                        & (y >= item.coord_y)
                         & (y <= item.coord_y + item.height)
                 });
 
@@ -93,8 +92,8 @@ impl Update for MRNWidget {
                 println!("Button released");
                 if let Some(idx) = self.selected {
                     let mut sitem = self.model.item_list.remove(idx);
-                    sitem.coord_x +=x - self.start_x.unwrap();
-                    sitem.coord_y +=y - self.start_y.unwrap();
+                    sitem.coord_x += x - self.start_x.unwrap();
+                    sitem.coord_y += y - self.start_y.unwrap();
                     self.model.item_list.insert(idx, sitem);
                 }
                 self.draw_item_list();
