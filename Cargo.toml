@@ -5,14 +5,8 @@ authors = ["Sven Thiele <sthiele78@gmail.com>"]
 edition ="2018"
 
 [dependencies]
-relm = "^0.11.0"
-relm-derive = "^0.11.0"
-cairo-rs = "^0.3.0"
-gdk = "^0.7.0"
+relm4 = { git = "https://github.com/Relm4/Relm4", tag = "v0.5.0-beta.1", features = ["macros"]}
 
-[dependencies.gtk]
-version = "^0.3.0"
-features = ["v3_22"]
 
 [lib]
 name = "mrn_canvas"

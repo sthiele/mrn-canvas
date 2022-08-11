@@ -1,279 +1,227 @@
-use gdk::Atom;
-use gdk::DragAction;
-use gdk::DrawingContextExt;
-use gdk::WindowExt;
-use gtk::DestDefaults;
-use gtk::TargetList;
-use gtk::{
-    ContainerExt, DrawingArea, Inhibit, ScrolledWindow, ScrolledWindowExt, Viewport, WidgetExt,
-    WidgetExtManual,
-};
-use relm::connect;
-use relm::connect_stream;
-use relm::{Relm, Update, Widget};
-use relm_derive::*;
+use gtk::cairo::{Context, Operator};
+use gtk::glib::clone;
+use gtk::prelude::{DrawingAreaExt, WidgetExt};
+use relm4::drawing::DrawHandler;
+use relm4::gtk;
+use relm4::gtk::traits::GestureDragExt;
+use relm4::{ComponentParts, SimpleComponent};
 
-use self::MRNWidgetMsg::*;
-
-pub struct Model {
+#[derive(Debug)]
+pub struct ItemCanvas {
     item_list: Vec<Item>,
+    selected: Option<Item>,
+    drag_begin: Option<(f64, f64)>,
+    handler: DrawHandler,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Item {
     coord_x: f64,
     coord_y: f64,
     width: f64,
     height: f64,
 }
-#[derive(Msg)]
-pub enum MRNWidgetMsg {
-    Add,
+#[derive(Debug)]
+pub enum CanvasInputMsg {
+    Add(f64, f64),
     Del,
-    BP((f64, f64)),
-    BR((f64, f64)),
-    DrawWidget,
-    DrawSW,
-    DD((i32, i32)),
+    DragBegin(f64, f64),
+    DragUpdate(f64, f64),
+    DragEnd(f64, f64),
 }
 
-pub struct MRNWidget {
-    da: DrawingArea,
-    sw: ScrolledWindow,
-    vp: Viewport,
-    tl: TargetList,
-    model: Model,
-    start_x: Option<f64>,
-    start_y: Option<f64>,
-    selected: Option<usize>,
+#[derive(Debug)]
+pub enum CanvasOutputMsg {}
+pub struct CanvasWidgets {
+    // _da: gtk::DrawingArea,
+    // snapshot: gtk::Snapshot,
+    // vp: gtk::Viewport,
 }
 
-impl Update for MRNWidget {
-    type Model = Model;
-    type ModelParam = ();
-    type Msg = MRNWidgetMsg;
+impl SimpleComponent for ItemCanvas {
+    type Input = CanvasInputMsg;
 
-    fn model(_: &Relm<Self>, _value: ()) -> Self::Model {
-        Model { item_list: vec![] }
+    type Output = CanvasOutputMsg;
+
+    type InitParams = ();
+
+    type Root = gtk::ScrolledWindow;
+
+    type Widgets = CanvasWidgets;
+
+    fn init_root() -> Self::Root {
+        gtk::ScrolledWindow::new()
     }
 
-    fn update(&mut self, event: MRNWidgetMsg) {
-        match event {
-            Add => {
-                self.add_new_item();
+    fn init(
+        _params: Self::InitParams,
+        root: &Self::Root,
+        sender: &relm4::ComponentSender<Self>,
+    ) -> relm4::ComponentParts<Self> {
+        let mut model = ItemCanvas {
+            item_list: vec![],
+            selected: None,
+            drag_begin: None,
+            handler: DrawHandler::new().unwrap(),
+        };
+
+        let vp = gtk::Viewport::default();
+        let da = gtk::DrawingArea::new();
+        // let snapshot = gtk::Snapshot::new();
+
+        model.handler.init(&da);
+
+        vp.set_child(Some(&da));
+        da.set_content_width(700);
+        da.set_content_height(700);
+        root.set_child(Some(&vp));
+
+        da.set_tooltip_text(Some("Drag items here"));
+        da.set_sensitive(true);
+
+        // let builder = gtk::EventControllerMotion::builder();
+        // let motion_controller = builder.build();
+        // da.add_controller(&motion_controller);
+
+        // motion_controller.connect_motion(clone!(@strong sender => move |_,x,y| {
+        //     sender.input(CanvasInputMsg::Move(x,y));
+        // }));
+
+        // let builder = gtk::GestureClick::builder();
+        // let click_controller = builder.build();
+        // da.add_controller(&click_controller);
+
+        // click_controller.connect_pressed(clone!(@strong sender => move |_,_,x,y| {
+        //     sender.input(CanvasInputMsg::ButtonPressed(x,y));
+        // }));
+        // click_controller.connect_released(clone!(@strong sender => move |_,_,x,y| {
+        //     sender.input(CanvasInputMsg::ButtonRelease(x,y));
+        // }));
+
+        let gcb = gtk::GestureDrag::builder();
+        let controller3 = gcb.build();
+        da.add_controller(&controller3);
+
+        controller3.connect_drag_begin(clone!(@strong sender => move |_,x,y| {
+            sender.input(CanvasInputMsg::DragBegin(x,y));
+        }));
+        controller3.connect_drag_update(clone!(@strong sender => move |_,x,y| {
+            sender.input(CanvasInputMsg::DragUpdate(x,y));
+        }));
+        controller3.connect_drag_end(clone!(@strong sender => move |_,x,y| {
+            sender.input(CanvasInputMsg::DragEnd(x,y));
+        }));
+
+
+        let widgets = CanvasWidgets {
+            // da,
+            // snapshot,
+            // vp,
+        };
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, message: Self::Input, _sender: &relm4::ComponentSender<Self>) {
+        match message {
+            CanvasInputMsg::Add(x, y) => {
+                self.add_new_item(x, y);
+                self.select(x, y);
             }
-            Del => {
-                self.delete_selected_item();
+            CanvasInputMsg::Del => self.selected = None,
+            CanvasInputMsg::DragBegin(x, y) => {
+                self.select(x, y);
+                if let Some(ref mut item) = self.selected {
+                    self.drag_begin = Some((item.coord_x, item.coord_y))
+                }
             }
-            BP((x, y)) => {
-                self.start_x = Some(x);
-                self.start_y = Some(y);
-                self.selected = self.model.item_list.iter().rposition(|ref item| {
+            CanvasInputMsg::DragUpdate(delta_x, delta_y) => {
+                if let Some((start_x, start_y)) = self.drag_begin {
+                    if let Some(ref mut item) = self.selected {
+                        item.coord_x = start_x + delta_x;
+                        item.coord_y = start_y + delta_y;
+                    }
+                }
+            }
+            CanvasInputMsg::DragEnd(_x, _y) => {
+                self.drag_begin = None;
+            }
+        }
+
+        let cx = self.handler.get_context().unwrap();
+
+        clear_surface(&cx);
+
+        let cx = self.handler.get_context().unwrap();
+        for item in &self.item_list {
+            draw_item(&cx, item);
+        }
+        if let Some(ref item) = self.selected {
+            draw_sitem(&cx, item);
+        }
+    }
+}
+
+impl ItemCanvas {
+    fn select(&mut self, x: f64, y: f64) {
+        if let Some(item) = self.selected.take() {
+            if (x >= item.coord_x)
+                & (x <= item.coord_x + item.width)
+                & (y >= item.coord_y)
+                & (y <= item.coord_y + item.height)
+            {
+                self.selected = Some(item)
+            } else {
+                let new_selected = self.item_list.iter().rposition(|item| {
                     (x >= item.coord_x)
                         & (x <= item.coord_x + item.width)
                         & (y >= item.coord_y)
                         & (y <= item.coord_y + item.height)
                 });
 
-                if self.selected.is_some() {
-                    let drag_action = DragAction::all();
-                    self.da.drag_begin_with_coordinates(
-                        &self.tl,
-                        drag_action,
-                        0,
-                        None,
-                        x as i32,
-                        y as i32,
-                    );
-                    println!("Drag begin");
+                if let Some(index) = new_selected {
+                    let new_item = self.item_list.remove(index);
+                    self.item_list.push(item);
+                    self.selected = Some(new_item);
+                }else{
+                    self.item_list.push(item);
                 }
-                self.draw_item_list();
             }
-            BR((x, y)) => {
-                println!("Button released");
-                if let Some(idx) = self.selected {
-                    let mut sitem = self.model.item_list.remove(idx);
-                    sitem.coord_x += x - self.start_x.unwrap();
-                    sitem.coord_y += y - self.start_y.unwrap();
-                    self.model.item_list.insert(idx, sitem);
-                }
-                self.draw_item_list();
-            }
+        } else {
+            let selected = self.item_list.iter().rposition(|item| {
+                (x >= item.coord_x)
+                    & (x <= item.coord_x + item.width)
+                    & (y >= item.coord_y)
+                    & (y <= item.coord_y + item.height)
+            });
 
-            DD((x, y)) => {
-                println!("Drag dropped at {},{}", x, y);
-                if let Some(idx) = self.selected {
-                    let mut sitem = self.model.item_list.remove(idx);
-                    sitem.coord_x += f64::from(x) - self.start_x.unwrap();
-                    sitem.coord_y += f64::from(y) - self.start_y.unwrap();
-                    self.model.item_list.insert(idx, sitem);
-                }
-                self.draw_item_list();
-            }
-            DrawWidget => {
-                self.draw_item_list();
-            }
-            DrawSW => {
-                self.draw_item_list();
+            if let Some(index) = selected {
+                self.selected = Some(self.item_list.remove(index));
             }
         }
     }
-}
 
-impl Widget for MRNWidget {
-    type Root = gtk::ScrolledWindow;
-
-    fn root(&self) -> Self::Root {
-        self.sw.clone()
-    }
-
-    fn view(relm: &Relm<Self>, model: Self::Model) -> Self {
-        let sw = ScrolledWindow::new(None, None);
-        sw.set_size_request(500, 500);
-        sw.set_min_content_height(500);
-        sw.set_min_content_width(500);
-        sw.set_overlay_scrolling(false);
-
-        let vp = Viewport::new(None, None);
-
-        let da = DrawingArea::new();
-        da.set_size_request(700, 700);
-        da.set_tooltip_text(Some("Draw things here"));
-        da.set_visible(true);
-        da.set_sensitive(true);
-        da.set_can_focus(true);
-        da.set_vexpand(true);
-        da.set_hexpand(true);
-        da.activate();
-        da.set_receives_default(true);
-        da.add_events(
-            // TODO: symbolic values instead of numberic ones (gdk/gdktypes.h) when
-            // gtk-rs gets fixed; http://gtk-rs.org/docs/gdk/struct.EventMask.html
-            (1 << 8) // gdk::EventMask::BUTTON_PRESS_MASK
-                      | (1 << 9) // gdk::EventMask::BUTTON_RELEASE_MASK
-                      | (1 << 2) // gdk::EventMask::POINTER_MOTION_MASK
-                      | (1 << 23) // gdk::EventMask::SMOOTH_SCROLL_MASK
-                      | (1 << 10) // gdk::EventMask::KEY_PRESS_MASK
-                      | (1 << 11), // gdk::EventMask::KEY_RELEASE_MASK
-        );
-
-        let destdef = DestDefaults::all();
-        let dragact = DragAction::all();
-
-        let v = vec![];
-        let tl = TargetList::new(&v);
-        let atom = Atom::intern("hi");
-        tl.add(&atom, 0, 0);
-        da.drag_dest_set(destdef, &v, dragact);
-        da.drag_dest_set_target_list(Some(&tl));
-
-        vp.add(&da);
-        sw.add(&vp);
-
-        connect!(
-            relm,
-            da,
-            connect_button_press_event(_s, c),
-            return (BP(c.get_position()), Inhibit(false))
-        );
-        connect!(
-            relm,
-            da,
-            connect_button_release_event(_s, c),
-            return (BR(c.get_position()), Inhibit(false))
-        );
-
-        connect!(
-            relm,
-            da,
-            connect_drag_drop(_s, _c, x, y, _t),
-            return (DD((x, y)), Inhibit(false))
-        );
-
-        //         connect!(relm, da, connect_drag_motion(s, c,x,y,t), return (DM((x,y)),Inhibit(false)));
-        //         connect!(relm, da, connect_drag_end(s, c), DE(c.list_targets()));
-
-        connect!(
-            relm,
-            da,
-            connect_draw(_s, _c),
-            return (DrawWidget, Inhibit(false))
-        );
-        connect!(
-            relm,
-            sw,
-            connect_draw(_s, _c),
-            return (DrawSW, Inhibit(false))
-        );
-
-        MRNWidget {
-            da,
-            sw,
-            vp,
-            tl,
-            model,
-            start_x: None,
-            start_y: None,
-            selected: None,
-        }
-    }
-}
-
-impl MRNWidget {
-    fn draw_item_list(&mut self) {
-        let window = self.da.get_window().unwrap();
-        let region = window.get_clip_region().unwrap();
-        let dc = window.begin_draw_frame(&region).unwrap();
-        let c = dc.get_cairo_context().unwrap();
-
-        clear_surface(&c);
-        for item in &self.model.item_list {
-            draw_item(&c, item);
-        }
-        if let Some(idx) = self.selected {
-            let sitem = &self.model.item_list[idx];
-            draw_sitem(&c, sitem);
-        }
-        window.end_draw_frame(&dc);
-    }
-
-    pub fn add_new_item(&mut self) {
-        println!("widget add item");
-
-        let muff = self.vp.translate_coordinates(&self.da, 1, 1);
-        let (x, y) = muff.unwrap();
+    pub fn add_new_item(&mut self, x: f64, y: f64) {
         let mitem = Item {
-            coord_x: f64::from(x),
-            coord_y: f64::from(y),
+            coord_x: x,
+            coord_y: y,
             width: 100.0,
             height: 100.0,
         };
-        self.model.item_list.push(mitem);
-        self.selected = Some(self.model.item_list.len() - 1);
-        self.draw_item_list();
-    }
-
-    pub fn delete_selected_item(&mut self) {
-        if let Some(idx) = self.selected {
-            self.model.item_list.remove(idx);
-            self.selected = None;
-        } else {
-            println!("widget del no item selected!");
-        }
-        self.draw_item_list();
+        self.item_list.push(mitem);
     }
 }
 
-fn clear_surface(c: &cairo::Context) {
-    c.set_source_rgb(0.9, 0.9, 0.9);
-    c.paint();
+fn clear_surface(c: &Context) {
+    c.set_operator(Operator::Clear);
+    c.paint().unwrap();
 }
-fn draw_item(c: &cairo::Context, item: &Item) {
+fn draw_item(c: &Context, item: &Item) {
     c.set_source_rgb(0.7, 0.7, 0.5);
     c.rectangle(item.coord_x, item.coord_y, item.width, item.height);
-    c.fill();
+    c.fill().unwrap();
 }
-fn draw_sitem(c: &cairo::Context, item: &Item) {
+fn draw_sitem(c: &Context, item: &Item) {
+    draw_item(c, item);
     c.set_source_rgb(0.5, 0.1, 0.5);
     c.rectangle(item.coord_x, item.coord_y, item.width, item.height);
-    c.fill();
+    c.stroke().unwrap();
 }
