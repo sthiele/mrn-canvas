@@ -1,22 +1,19 @@
-// use gdk::DragAction;
-// use gdk::DrawingContextExt;
-// use gdk::WindowExt;
-// use gtk::DestDefaults;
-// use gtk::TargetList;
-use gtk::cairo::Context;
+use gtk::cairo::{Context, Operator};
 use gtk::glib::clone;
+use gtk::prelude::{DrawingAreaExt, WidgetExt};
+use relm4::drawing::DrawHandler;
 use relm4::gtk;
 use relm4::gtk::traits::GestureDragExt;
 use relm4::{ComponentParts, SimpleComponent};
-use gtk::prelude::{DrawingAreaExt, GtkWindowExt, WidgetExt};
-use relm4::drawing::DrawHandler;
+
+#[derive(Debug)]
 pub struct ItemCanvas {
     item_list: Vec<Item>,
     selected: Option<Item>,
     drag_begin: Option<(f64, f64)>,
     handler: DrawHandler,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Item {
     coord_x: f64,
     coord_y: f64,
@@ -24,43 +21,39 @@ struct Item {
     height: f64,
 }
 #[derive(Debug)]
-pub enum CanvasWidgetsMsg {
-    ButtonPressed((f64, f64)),
-    ButtonRelease((f64, f64)),
-    Move((f64, f64)),
-    DragBegin((f64, f64)),
-    DragUpdate((f64, f64)),
-    DragEnd((f64, f64)),
+pub enum CanvasInputMsg {
+    Add(f64, f64),
+    Del,
+    DragBegin(f64, f64),
+    DragUpdate(f64, f64),
+    DragEnd(f64, f64),
 }
 
+#[derive(Debug)]
+pub enum CanvasOutputMsg {}
 pub struct CanvasWidgets {
-    da: gtk::DrawingArea,
-    snapshot: gtk::Snapshot,
-    sw: gtk::ScrolledWindow,
-    vp: gtk::Viewport,
+    // _da: gtk::DrawingArea,
+    // snapshot: gtk::Snapshot,
+    // vp: gtk::Viewport,
 }
 
 impl SimpleComponent for ItemCanvas {
-    type Input = CanvasWidgetsMsg;
+    type Input = CanvasInputMsg;
 
-    type Output = ();
+    type Output = CanvasOutputMsg;
 
     type InitParams = ();
-    /// The root GTK widget that this component will create.
-    type Root = gtk::Window;
+
+    type Root = gtk::ScrolledWindow;
 
     type Widgets = CanvasWidgets;
 
     fn init_root() -> Self::Root {
-        gtk::Window::builder()
-            .title("Simple app")
-            .default_width(300)
-            .default_height(100)
-            .build()
+        gtk::ScrolledWindow::new()
     }
 
     fn init(
-        params: Self::InitParams,
+        _params: Self::InitParams,
         root: &Self::Root,
         sender: &relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
@@ -70,88 +63,77 @@ impl SimpleComponent for ItemCanvas {
             drag_begin: None,
             handler: DrawHandler::new().unwrap(),
         };
-        let sw = gtk::ScrolledWindow::new();
-        sw.set_overlay_scrolling(false);
 
         let vp = gtk::Viewport::default();
         let da = gtk::DrawingArea::new();
-        let snapshot = gtk::Snapshot::new();
+        // let snapshot = gtk::Snapshot::new();
 
         model.handler.init(&da);
 
         vp.set_child(Some(&da));
-        sw.set_child(Some(&vp));
         da.set_content_width(700);
         da.set_content_height(700);
-        root.set_child(Some(&sw));
+        root.set_child(Some(&vp));
 
         da.set_tooltip_text(Some("Drag items here"));
         da.set_sensitive(true);
 
-        let gcb = gtk::EventControllerMotion::builder();
-        let controller = gcb.build();
-        da.add_controller(&controller);
+        // let builder = gtk::EventControllerMotion::builder();
+        // let motion_controller = builder.build();
+        // da.add_controller(&motion_controller);
 
-        controller.connect_motion(clone!(@strong sender => move |_,x,y| {
-            sender.input(CanvasWidgetsMsg::Move((x,y)));
-        }));
+        // motion_controller.connect_motion(clone!(@strong sender => move |_,x,y| {
+        //     sender.input(CanvasInputMsg::Move(x,y));
+        // }));
 
-        let gcb = gtk::GestureClick::builder();
-        let controller2 = gcb.build();
-        da.add_controller(&controller2);
+        // let builder = gtk::GestureClick::builder();
+        // let click_controller = builder.build();
+        // da.add_controller(&click_controller);
 
-        controller2.connect_pressed(clone!(@strong sender => move |_,_,x,y| {
-            sender.input(CanvasWidgetsMsg::ButtonPressed((x,y)));
-        }));
-        controller2.connect_released(clone!(@strong sender => move |_,_,x,y| {
-            sender.input(CanvasWidgetsMsg::ButtonRelease((x,y)));
-        }));
+        // click_controller.connect_pressed(clone!(@strong sender => move |_,_,x,y| {
+        //     sender.input(CanvasInputMsg::ButtonPressed(x,y));
+        // }));
+        // click_controller.connect_released(clone!(@strong sender => move |_,_,x,y| {
+        //     sender.input(CanvasInputMsg::ButtonRelease(x,y));
+        // }));
 
         let gcb = gtk::GestureDrag::builder();
         let controller3 = gcb.build();
         da.add_controller(&controller3);
 
         controller3.connect_drag_begin(clone!(@strong sender => move |_,x,y| {
-            sender.input(CanvasWidgetsMsg::DragBegin((x,y)));
+            sender.input(CanvasInputMsg::DragBegin(x,y));
         }));
         controller3.connect_drag_update(clone!(@strong sender => move |_,x,y| {
-            sender.input(CanvasWidgetsMsg::DragUpdate((x,y)));
+            sender.input(CanvasInputMsg::DragUpdate(x,y));
         }));
         controller3.connect_drag_end(clone!(@strong sender => move |_,x,y| {
-            sender.input(CanvasWidgetsMsg::DragEnd((x,y)));
+            sender.input(CanvasInputMsg::DragEnd(x,y));
         }));
 
-        model.add_new_item();
-        model.add_new_item();
-        model.add_new_item();
 
         let widgets = CanvasWidgets {
-            da,
-            snapshot,
-            sw,
-            vp,
+            // da,
+            // snapshot,
+            // vp,
         };
         ComponentParts { model, widgets }
     }
 
     fn update(&mut self, message: Self::Input, _sender: &relm4::ComponentSender<Self>) {
         match message {
-            CanvasWidgetsMsg::ButtonPressed((x, y)) => {
+            CanvasInputMsg::Add(x, y) => {
+                self.add_new_item(x, y);
                 self.select(x, y);
             }
-            CanvasWidgetsMsg::ButtonRelease((x, y)) => {
-                println!("Button released {x} {y}");
-            }
-            CanvasWidgetsMsg::Move(_) => {
-            }
-            CanvasWidgetsMsg::DragBegin((x, y)) => {
+            CanvasInputMsg::Del => self.selected = None,
+            CanvasInputMsg::DragBegin(x, y) => {
                 self.select(x, y);
                 if let Some(ref mut item) = self.selected {
                     self.drag_begin = Some((item.coord_x, item.coord_y))
                 }
             }
-            CanvasWidgetsMsg::DragUpdate((delta_x, delta_y)) => {
-                println!("Drag pos {delta_x} {delta_y}");
+            CanvasInputMsg::DragUpdate(delta_x, delta_y) => {
                 if let Some((start_x, start_y)) = self.drag_begin {
                     if let Some(ref mut item) = self.selected {
                         item.coord_x = start_x + delta_x;
@@ -159,8 +141,7 @@ impl SimpleComponent for ItemCanvas {
                     }
                 }
             }
-            CanvasWidgetsMsg::DragEnd((x, y)) => {
-                println!("Drag end at {x} {y}");
+            CanvasInputMsg::DragEnd(_x, _y) => {
                 self.drag_begin = None;
             }
         }
@@ -187,7 +168,6 @@ impl ItemCanvas {
                 & (y >= item.coord_y)
                 & (y <= item.coord_y + item.height)
             {
-                println!("SAME SELECTED ");
                 self.selected = Some(item)
             } else {
                 let new_selected = self.item_list.iter().rposition(|item| {
@@ -198,11 +178,12 @@ impl ItemCanvas {
                 });
 
                 if let Some(index) = new_selected {
-                    println!("NEW SELECTED {}", index);
                     let new_item = self.item_list.remove(index);
                     self.item_list.push(item);
                     self.selected = Some(new_item);
-                } 
+                }else{
+                    self.item_list.push(item);
+                }
             }
         } else {
             let selected = self.item_list.iter().rposition(|item| {
@@ -213,38 +194,24 @@ impl ItemCanvas {
             });
 
             if let Some(index) = selected {
-                println!("NEW SELECTED {}", index);
                 self.selected = Some(self.item_list.remove(index));
-            } 
+            }
         }
     }
 
-    pub fn add_new_item(&mut self) {
-        println!("widget add item");
-
+    pub fn add_new_item(&mut self, x: f64, y: f64) {
         let mitem = Item {
-            coord_x: f64::from(1),
-            coord_y: f64::from(1),
+            coord_x: x,
+            coord_y: y,
             width: 100.0,
             height: 100.0,
         };
         self.item_list.push(mitem);
     }
-
-    //     pub fn delete_selected_item(&mut self) {
-    //         if let Some(idx) = self.selected {
-    //             self.model.item_list.remove(idx);
-    //             self.selected = None;
-    //         } else {
-    //             println!("widget del no item selected!");
-    //         }
-    //         self.draw_item_list();
-    //     }
 }
 
 fn clear_surface(c: &Context) {
-    // c.set_operator(Operator::Clear);
-    c.set_source_rgb(0.9, 0.9, 0.9);
+    c.set_operator(Operator::Clear);
     c.paint().unwrap();
 }
 fn draw_item(c: &Context, item: &Item) {
